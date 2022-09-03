@@ -16,7 +16,7 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
-        if guege <= 50000:
+        if guege <= 20000:
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_SPACE:
                     score += 1
@@ -31,5 +31,7 @@ while running:
                 guege = 0
     guege += score
     print(guege)
+
+    
     
 pygame.quit()
