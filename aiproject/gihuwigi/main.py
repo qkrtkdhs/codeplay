@@ -20,7 +20,7 @@ background_image = pygame.image.load("aiproject/gihuwigi/image/bg.jpg").convert(
 background_rect = background_image.get_rect()
 
 # 플레이어 설정
-player_size = 80
+player_size =  80
 player_x = width // 2 - player_size // 2
 player_y = height - 2 * player_size
 player_speed = 5
