@@ -16,17 +16,19 @@ black = (0, 0, 0)
 white = (255, 255, 255)
 
 # 배경 설정
-background_image = pygame.image.load("aiproject/gihuwigi/image/bg.jpg").convert()
+background_image = pygame.image.load("aiproject/gihuwigi/image/bg.png").convert()
+background_image = pygame.transform.scale(background_image, (width, height))
 background_rect = background_image.get_rect()
+background_y = 0  # 배경의 y 좌표
 
 # 플레이어 설정
-player_size =  80
+player_size = 80
 player_x = width // 2 - player_size // 2
 player_y = height - 2 * player_size
 player_speed = 5
 player_image = pygame.image.load("aiproject/gihuwigi/image/ujs.png").convert_alpha()
 player_image = pygame.transform.scale(player_image, (player_size, player_size))
-player_rect = player_image.get_rect(topleft=(player_x, player_y + player_size // 2))
+player_rect = player_image.get_rect(topleft=(player_x, player_y))
 
 # 이미지 크기 조절
 player_image = pygame.transform.scale(player_image, (player_size, player_size))
@@ -42,8 +44,8 @@ enemies = []
 spawn_counter = 0
 
 # 하트 설정
-heart_image = pygame.image.load("heart.png")  # 하트 이미지 파일 경로에 따라 수정
-heart_size = 30
+heart_image = pygame.image.load("aiproject/gihuwigi/image/hrt.png")  # 하트 이미지 파일 경로에 따라 수정
+heart_size = 50
 hearts = 3
 
 
@@ -70,8 +72,10 @@ def spawn_enemy():
         scale_factor = 0.8  # 예시로 80% 크기로 설정
         scaled_width = int(enemy_image_surface.get_width() * scale_factor)
         scaled_height = int(enemy_image_surface.get_height() * scale_factor)
+
+        # 히트박스를 오른쪽으로 옮김
         enemy_rect = pygame.Rect(
-            enemy_x + (enemy_size - scaled_width) // 2,
+            enemy_x + (enemy_size - scaled_width) // 2 + 10,  # 여기서 10은 조절할 값입니다
             enemy_y + (enemy_size - scaled_height) // 2,
             scaled_width,
             scaled_height
@@ -82,10 +86,13 @@ def spawn_enemy():
             "image": enemy_image_surface
         })
 
+
 def draw_hearts():
-    heart_spacing = 40
+    heart_spacing = 20  # 하트 간격을 조절할 수 있습니다.
     for i in range(hearts):
-        screen.blit(heart_image, (10 + i * heart_spacing, 10))
+        heart_rect = heart_image.get_rect(topleft=(10 + i * (heart_size + heart_spacing), 10))
+        heart_surface = pygame.transform.scale(heart_image, (heart_size, heart_size))
+        screen.blit(heart_surface, heart_rect)
 
 # 게임 루프
 clock = pygame.time.Clock()
@@ -101,17 +108,31 @@ while True:
 
     keys = pygame.key.get_pressed()
 
-
     if not game_over:
         # 이동
         if keys[pygame.K_a] and player_rect.x > 0:
-            player_rect.x -= player_speed
-        if keys[pygame.K_d] and player_rect.x < width - player_rect.width:
-            player_rect.x += player_speed
+            player_x -= player_speed
+        if keys[pygame.K_d] and player_rect.x < width - player_size:
+            player_x += player_speed
         if keys[pygame.K_w] and player_rect.y > 0:
-            player_rect.y -= player_speed
-        if keys[pygame.K_s] and player_rect.y < height - player_rect.height:
-            player_rect.y += player_speed
+            player_y -= player_speed
+        if keys[pygame.K_s] and player_rect.y < height - player_size:
+            player_y += player_speed
+
+        # 플레이어 히트박스 업데이트
+        player_rect.topleft = (player_x, player_y)
+
+        # 배경 스크롤
+        background_y += 5  # 스크롤 속도를 조절할 수 있습니다.
+        if background_y >= height:
+            background_y = 0
+
+        # 배경 그리기
+        screen.blit(background_image, (0, background_y - height))
+        screen.blit(background_image, (0, background_y))
+
+        # 플레이어 히트박스 업데이트
+        player_rect.topleft = (player_x, player_y)
 
         # 플레이어와 적 충돌 체크
         for enemy in enemies:
@@ -130,21 +151,9 @@ while True:
                         player_image.set_alpha(128)  # 0(투명)에서 255(불투명) 사이의 값 설정
                         pygame.time.set_timer(pygame.USEREVENT, int(invincible_duration * 1000))  # 타이머 설정
 
-    
+
         # 플레이어 그리기
         screen.blit(player_image, player_rect.topleft)
-
-        # 충돌 감지 및 처리
-        for enemy in enemies:
-            if pygame.Rect(player_x, player_y, player_size, player_size).colliderect(enemy["rect"]):
-                # 충돌 시 하트 감소
-                hearts -= 1
-                if hearts == 0:
-                    running = False  # 게임 오버
-                else:
-                    # 하트가 남아있으면 적 다시 생성
-                    enemy["rect"].y = -enemy_size
-                    enemy["rect"].x = random.randint(0, width - enemy_size)
 
         # 하트 그리기
         draw_hearts()
@@ -158,9 +167,6 @@ while True:
         # 이동하는 적
         for enemy in enemies:
             enemy["rect"].y += enemy["speed"]
-
-        # 배경 그리기
-        screen.blit(background_image, background_rect)
 
         # 적 그리기
         for enemy in enemies:
@@ -176,4 +182,4 @@ while True:
         # 무적 상태 해제
     if game_over or (time.time() - last_collision_time > invincible_duration and player_image.get_alpha() != 255):
         player_image.set_alpha(255)
-        pygame.time.set_timer(pygame.USEREVENT, 0)  # 타이머 해제
+        pygame.time.set_timer(pygame.USEREVENT, 0)  
