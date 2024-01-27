@@ -15,6 +15,10 @@ pygame.display.set_caption("SSG")
 black = (0, 0, 0)
 white = (255, 255, 255)
 
+# 한글 폰트 설정
+font_path = "aiproject/gihuwigi/image/k_font.ttf"  # 한글 폰트 파일 경로에 맞게 수정
+korean_font = pygame.font.Font(font_path, 36)
+
 # 배경 설정
 background_image = pygame.image.load("aiproject/gihuwigi/image/bg.png").convert()
 background_image = pygame.transform.scale(background_image, (width, height))
@@ -52,7 +56,7 @@ enemy_images = [
 ]
 enemies = []
 spawn_counter = 0
-enemy_speed_increment = 1
+enemy_speed_increment = 2
 
 # 하트 설정
 heart_image = pygame.image.load("aiproject/gihuwigi/image/hrt.png")  # 하트 이미지 파일 경로에 따라 수정
@@ -66,7 +70,7 @@ max_collisions = 3
 collision_count = 0
 invincible_duration = 1
 last_collision_time = 0
-score = 0
+score = 1000
 story_displayed = False  # 스토리가 이미 표시되었는지 여부를 나타내는 변수
 game_started = False  # 게임이 시작되었는지 여부를 나타내는 변수
 
@@ -97,7 +101,7 @@ def spawn_enemy():
         enemies.append({
             "rect": enemy_rect,
             "speed": enemy_speed,
-            "image": enemy_image_surface
+            "image": enemy_image_surface  # 적 이미지를 딕셔너리에 추가
         })
         enemy_speed += enemy_speed_increment
 
@@ -113,6 +117,8 @@ def draw_hearts():
 
 # 게임 루프
 clock = pygame.time.Clock()
+base_spawn_frequency = 60  # 초기 생성 주기
+spawn_frequency = base_spawn_frequency
 
 while True:
     for event in pygame.event.get():
@@ -134,7 +140,7 @@ while True:
         keys = pygame.key.get_pressed()
 
         if not game_over:
-            score += clock.get_time() / 100
+            score -= clock.get_time() / 80
             # 이동
             if keys[pygame.K_LEFT] and player_rect.x > 0:
                 player_x -= player_speed
@@ -170,7 +176,7 @@ while True:
                         print(f"Collision Count: {collision_count}")
 
                         if collision_count >= max_collisions:
-                            print("Game Over!")
+                            print("게임 오버")
                             game_over = True
                         else:
                             # 무적 상태일 때 반투명 처리
@@ -184,20 +190,33 @@ while True:
             # 하트 그리기
             draw_hearts()
 
-            # 적 생성
-            spawn_counter += 1.5
-            if spawn_counter >= 60:
-                spawn_enemy()
-            spawn_counter = 0
+                # 이동하는 적
+        enemies_to_remove = []  # 삭제할 적들을 추적하기 위한 리스트 추가
 
-            # 이동하는 적
-            for enemy in enemies:
+        for enemy in enemies:
+            if not game_over:  # 게임이 종료되지 않은 경우에만 이동
                 enemy["rect"].y += enemy["speed"]
 
-            # 적 그리기
-            for enemy in enemies:
-                if enemy["image"]:
-                    screen.blit(enemy["image"], enemy["rect"].topleft)
+                # 적이 화면 아래로 벗어났을 때 삭제
+                if enemy["rect"].y > height:
+                    enemies_to_remove.append(enemy)
+
+                # 적 이미지를 화면에 그리기
+                screen.blit(enemy["image"], enemy["rect"].topleft)
+
+        # 삭제할 적들을 실제로 제거
+        for enemy in enemies_to_remove:
+            enemies.remove(enemy)
+        # 적 생성 주기 감소 (더 자주 생성되도록)
+        spawn_frequency -= 0.01  # 이 값은 적절히 조절하여 원하는 주기로 설정하세요.
+        spawn_frequency = max(spawn_frequency, 20)  # 최소 생성 주기 설정
+
+        # 적 생성
+        spawn_counter += 1
+        if spawn_counter >= int(spawn_frequency):
+            if not game_over:
+                spawn_enemy()
+                spawn_counter = 0
 
         # 초당 프레임 수
         clock.tick(60)
@@ -209,11 +228,11 @@ while True:
 
         if game_over:
             font_size = 80  # 원하는 폰트 크기로 조절
-            font = pygame.font.Font(None, font_size)
+            font = pygame.font.Font(font_path, font_size)
 
             # 게임 오버와 점수를 나누어 각각 렌더링
-            game_over_text = font.render("Game over!", True, white)
-            score_text = font.render(f"Score: {int(score)}", True, white)
+            game_over_text = font.render("게임 오버", True, white)
+            score_text = font.render(f"남은 거리: {int(score)}", True, white)
 
             # 텍스트의 rect를 가져와 위치를 조절하여 화면에 표시
             game_over_rect = game_over_text.get_rect(center=(width // 2, height // 2 - font_size // 2))
@@ -222,9 +241,9 @@ while True:
             screen.blit(game_over_text, game_over_rect)
             screen.blit(score_text, score_rect)
         else:
-            font_size = 60  # 원하는 폰트 크기로 조절
-            font = pygame.font.Font(None, font_size)
-            score_text = font.render(f"Score: {int(score)}", True, white)
+            font_size = 30  # 원하는 폰트 크기로 조절
+            font = pygame.font.Font(font_path, font_size)
+            score_text = font.render(f"남은 거리: {int(score)}", True, white)
             score_rect = score_text.get_rect(topleft=(width - 10 - score_text.get_width(), 10))  # 화면 오른쪽 위로 조절
 
             screen.blit(score_text, score_rect)
@@ -235,10 +254,23 @@ while True:
         # 게임이 시작되지 않은 경우에는 스토리를 표시
         if not story_displayed:
             screen.fill(black)  # 화면을 검은색으로 채움
-            font = pygame.font.Font(None, 36)
-            story_text = font.render("옛날 옛적에...", True, white)
-            story_rect = story_text.get_rect(center=(width // 2, height // 2))
-            screen.blit(story_text, story_rect)
+            # Story text with line breaks
+            story_lines = [
+                "나날이 늘어가는 이상기후 때문에,",
+                "더이상 지구는 인간이 살 수 있는 환경이 아니다.",
+                "그래서 나는 지구를 탈출하기로 했다.",
+                "아마도 중간에 사고만 나지 않는다면,",
+                "무사히 케플러 22b에 도착할 수 있을 것이다."
+            ]
+
+            total_text_height = sum(korean_font.render(line, True, white).get_height() for line in story_lines)
+
+            # Render each line separately
+            y_offset = 0
+            for line in story_lines:
+                line_surface = korean_font.render(line, True, white)
+                screen.blit(line_surface, ((width - line_surface.get_width()) // 2, (height - total_text_height) // 2 + y_offset))
+                y_offset += line_surface.get_height()
 
             # 엔터를 누르면 스토리 표시 완료
             keys = pygame.key.get_pressed()  # 여기로 이동
@@ -249,7 +281,7 @@ while True:
         else:
             screen.fill(black)
             font = pygame.font.Font(None, 36)
-            start_text = font.render("Enter 키를 눌러 시작", True, white)
+            start_text = font.render("엔터를 눌러 시작", True, white)
             start_rect = start_text.get_rect(center=(width // 2, height // 2))
             screen.blit(start_text, start_rect)
 
