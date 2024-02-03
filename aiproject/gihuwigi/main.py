@@ -70,9 +70,11 @@ max_collisions = 3
 collision_count = 0
 invincible_duration = 1
 last_collision_time = 0
-score = 1000
+score = 10
 story_displayed = False  # 스토리가 이미 표시되었는지 여부를 나타내는 변수
 game_started = False  # 게임이 시작되었는지 여부를 나타내는 변수
+ending = False
+ending_start_time = 0  # 엔딩 시작 시간 저장 변수 추가
 
 def spawn_enemy():
     try:
@@ -136,6 +138,12 @@ while True:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+        
+                # 스코어가 0 이하로 내려갈 때의 처리
+        if score <= 0 and not ending:
+            ending = True
+            ending_start_time = pygame.time.get_ticks()  # 엔딩 시작 시간 저장
+            ending_duration = 3000  # 엔딩 지속 시간 (밀리초)
 
         keys = pygame.key.get_pressed()
 
@@ -226,20 +234,67 @@ while True:
             player_image.set_alpha(255)
             pygame.time.set_timer(pygame.USEREVENT, 0)
 
-        if game_over:
+        # 게임 오버 또는 엔딩일 때 처리
+        if game_over or ending:
+            font_size = 80  # 원하는 폰트 크기로 조절
+            font = pygame.font.Font(font_path, font_size)
+            game_over_text = None  # 초기화
+            if ending:
+                # 엔딩 화면 처리
+                elapsed_time = pygame.time.get_ticks() - ending_start_time
+
+                if elapsed_time < ending_duration:
+                    # 화면을 점점 어둡게 변화시키기
+                    alpha = min(255, int(elapsed_time / (ending_duration / 255)))
+                    overlay = pygame.Surface((width, height))
+                    overlay.set_alpha(alpha)
+                    overlay.fill((0, 0, 0))
+                    screen.blit(overlay, (0, 0))
+
+                    # 엔딩 텍스트 표시
+                    font_size = 36
+                    ending_text = korean_font.render("엔딩", True, white)
+                    ending_rect = ending_text.get_rect(center=(width // 2, height // 2))
+                    screen.blit(ending_text, ending_rect)
+
+                    pygame.display.flip()
+
+                else:
+                    # 화면을 검은색으로 유지하며 엔터키를 누르면 게임 종료
+                    screen.fill((0, 0, 0))
+
+                    # 엔터키를 누르면 게임 종료
+                    keys = pygame.key.get_pressed()
+                    if keys[pygame.K_RETURN]:
+                        pygame.quit()
+                        sys.exit()
+
+            # 엔딩 중에는 엔터키를 눌러 게임 종료
+            keys = pygame.key.get_pressed()
+            if ending and keys[pygame.K_RETURN]:
+                pygame.quit()
+                sys.exit()
+
+
+            # 게임 오버일 때 처리
             font_size = 80  # 원하는 폰트 크기로 조절
             font = pygame.font.Font(font_path, font_size)
 
-            # 게임 오버와 점수를 나누어 각각 렌더링
-            game_over_text = font.render("게임 오버", True, white)
-            score_text = font.render(f"남은 거리: {int(score)}", True, white)
+            if game_over:
+                game_over_text = font.render("게임 오버", True, white)
+                score_text = font.render(f"남은 거리: {int(score)}", True, white)
 
-            # 텍스트의 rect를 가져와 위치를 조절하여 화면에 표시
-            game_over_rect = game_over_text.get_rect(center=(width // 2, height // 2 - font_size // 2))
-            score_rect = score_text.get_rect(center=(width // 2, height // 2 + font_size // 2))
+                # 텍스트의 rect를 가져와 위치를 조절하여 화면에 표시
+                if game_over_text:
+                    game_over_rect = game_over_text.get_rect(center=(width // 2, height // 2 - font_size // 2))
+                    screen.blit(game_over_text, game_over_rect)
 
-            screen.blit(game_over_text, game_over_rect)
-            screen.blit(score_text, score_rect)
+                score_rect = score_text.get_rect(center=(width // 2, height // 2 + font_size // 2))
+                screen.blit(score_text, score_rect)
+
+            pygame.display.flip()
+
+            
         else:
             font_size = 30  # 원하는 폰트 크기로 조절
             font = pygame.font.Font(font_path, font_size)
