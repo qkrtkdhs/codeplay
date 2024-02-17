@@ -70,11 +70,12 @@ max_collisions = 3
 collision_count = 0
 invincible_duration = 1
 last_collision_time = 0
-score = 10
+score = 1000
 story_displayed = False  # 스토리가 이미 표시되었는지 여부를 나타내는 변수
 game_started = False  # 게임이 시작되었는지 여부를 나타내는 변수
 ending = False
 ending_start_time = 0  # 엔딩 시작 시간 저장 변수 추가
+ending_duration = 3000
 
 def spawn_enemy():
     try:
@@ -175,21 +176,22 @@ while True:
             screen.blit(background_image, (0, background_y))
 
             # 플레이어와 적 충돌 체크
-            for enemy in enemies:
-                if player_rect.colliderect(enemy["rect"]):
-                    if time.time() - last_collision_time > invincible_duration:
-                        last_collision_time = time.time()
-                        # 충돌 횟수 증가
-                        collision_count += 1
-                        print(f"Collision Count: {collision_count}")
+            if not game_over and not ending:  # 'ending' 상태가 아닌 경우에만 충돌 감지 수행
+                for enemy in enemies:
+                    if player_rect.colliderect(enemy.get("rect", pygame.Rect(0, 0, 0, 0))):
+                        if time.time() - last_collision_time > invincible_duration:
+                            last_collision_time = time.time()
+                            # 충돌 횟수 증가
+                            collision_count += 1
+                            print(f"충돌 횟수: {collision_count}")
 
-                        if collision_count >= max_collisions:
-                            print("게임 오버")
-                            game_over = True
-                        else:
-                            # 무적 상태일 때 반투명 처리
-                            player_image.set_alpha(128)  # 0(투명)에서 255(불투명) 사이의 값 설정
-                            pygame.time.set_timer(pygame.USEREVENT, int(invincible_duration * 1000))  # 타이머 설정
+                            if collision_count >= max_collisions:
+                                print("게임 오버")
+                                game_over = True
+                            else:
+                                # 무적 상태일 때 반투명 처리
+                                player_image.set_alpha(128)  # 0(투명)에서 255(불투명) 사이의 값 설정
+                                pygame.time.set_timer(pygame.USEREVENT, int(invincible_duration * 1000))  # 타이머 설정
 
 
             # 플레이어 그리기
@@ -239,48 +241,12 @@ while True:
             font_size = 80  # 원하는 폰트 크기로 조절
             font = pygame.font.Font(font_path, font_size)
             game_over_text = None  # 초기화
-            if ending:
-                # 엔딩 화면 처리
-                elapsed_time = pygame.time.get_ticks() - ending_start_time
-
-                if elapsed_time < ending_duration:
-                    # 화면을 점점 어둡게 변화시키기
-                    alpha = min(255, int(elapsed_time / (ending_duration / 255)))
-                    overlay = pygame.Surface((width, height))
-                    overlay.set_alpha(alpha)
-                    overlay.fill((0, 0, 0))
-                    screen.blit(overlay, (0, 0))
-
-                    # 엔딩 텍스트 표시
-                    font_size = 36
-                    ending_text = korean_font.render("엔딩", True, white)
-                    ending_rect = ending_text.get_rect(center=(width // 2, height // 2))
-                    screen.blit(ending_text, ending_rect)
-
-                    pygame.display.flip()
-
-                else:
-                    # 화면을 검은색으로 유지하며 엔터키를 누르면 게임 종료
-                    screen.fill((0, 0, 0))
-
-                    # 엔터키를 누르면 게임 종료
-                    keys = pygame.key.get_pressed()
-                    if keys[pygame.K_RETURN]:
-                        pygame.quit()
-                        sys.exit()
-
-            # 엔딩 중에는 엔터키를 눌러 게임 종료
-            keys = pygame.key.get_pressed()
-            if ending and keys[pygame.K_RETURN]:
-                pygame.quit()
-                sys.exit()
-
-
-            # 게임 오버일 때 처리
-            font_size = 80  # 원하는 폰트 크기로 조절
-            font = pygame.font.Font(font_path, font_size)
+            elapsed_time = pygame.time.get_ticks() - ending_start_time
 
             if game_over:
+                # 게임 오버 상태에서는 게임 오버 텍스트만 표시
+                font_size = 80
+                font = pygame.font.Font(font_path, font_size)
                 game_over_text = font.render("게임 오버", True, white)
                 score_text = font.render(f"남은 거리: {int(score)}", True, white)
 
@@ -292,7 +258,36 @@ while True:
                 score_rect = score_text.get_rect(center=(width // 2, height // 2 + font_size // 2))
                 screen.blit(score_text, score_rect)
 
-            pygame.display.flip()
+            elif ending:
+                if elapsed_time < ending_duration:
+                    # 엔딩 효과가 발생하는 동안 화면이 점점 어두워지도록 설정
+                    alpha = int(255 * elapsed_time / ending_duration)
+                else:
+                    alpha = 255  # 엔딩 효과가 끝난 후에는 화면을 완전히 어둡게 설정
+
+                # 검은색 오버레이를 적용하여 화면을 어둡게 함
+                overlay = pygame.Surface((width, height))
+                overlay.set_alpha(alpha)
+                overlay.fill((0, 0, 0))
+                screen.blit(overlay, (0, 0))
+
+                if elapsed_time >= ending_duration:
+                    # 엔딩 메시지 표시
+                    font_size = 36
+                    font = pygame.font.Font(font_path, font_size)
+                    ending_text = [
+                        "긴 항해 끝에, 나는 목적지에 도착했다.",
+                        "여기서 얼마나 버틸지는 모르겠지만",
+                        "이미 지구는 희망이 사라졌으니",
+                        "지구에 남아있는 것 보다는 오래 살지 않을까?",
+                    ]
+                    total_text_height = sum(korean_font.render(line, True, white).get_height() for line in ending_text)
+
+                    y_offset = 0
+                    for line in ending_text:
+                        line_surface = korean_font.render(line, True, white)
+                        screen.blit(line_surface, ((width - line_surface.get_width()) // 2, (height - total_text_height) // 2 + y_offset))
+                        y_offset += line_surface.get_height()
 
             
         else:
