@@ -160,6 +160,7 @@ while True:
             if keys[pygame.K_DOWN] and player_rect.y < height - player_size:
                 player_y += player_speed
 
+
             # 플레이어 히트박스 업데이트
             player_rect.topleft = (
                 player_x + (player_size - scaled_player_width) // 2,
